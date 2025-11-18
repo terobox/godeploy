@@ -24,7 +24,8 @@ print_help() {
 godeploy ${GODEPLOY_VERSION} - GitHub Release 部署工具
 
 Usage:
-  godeploy [options] <version>
+  godeploy [options] [<version>]
+  godeploy init
 
 Options:
   -c, --config FILE       指定部署配置文件（默认为 ./godeploy.env，
@@ -76,9 +77,35 @@ print_version() {
 }
 
 ########################################
-# Step 0: 预解析 --config / --help / --version
+# Step 0: 预解析特殊命令 (init) 和早期选项 (--config / --help / --version)
 ########################################
 
+# 新增：处理 init 命令
+if [[ "${1:-}" == "init" ]]; then
+  if [[ -f "./godeploy.env" ]]; then
+    echo "[ERROR] godeploy.env already exists in the current directory. Aborting."
+    exit 1
+  fi
+  cat <<'EOF' > ./godeploy.env
+# GitHub 仓库 & Token
+REPO="owner/repo"
+GITHUB_TOKEN="ghp_xxx_your_token_here"
+# 应用名称（二进制名、默认资产名）
+APP_NAME="my-app"
+# 要部署的版本 tag (如 v1.0.0)，godeploy 会优先使用命令行传入的版本号
+# VERSION=""
+# 可选：如果 Release 资产名和 APP_NAME 不一样，可以单独指定
+# ASSET_NAME="my-app-linux-amd64"
+# 可选：如果 systemd unit 名字不等于 APP_NAME.service，可以单独指定
+# SYSTEMD_UNIT="my-app.service"
+# 可选：部署根目录，默认为执行 godeploy 时的当前目录
+# DEPLOY_ROOT="/srv/app/my-app"
+EOF
+  echo "[SUCCESS] Created ./godeploy.env. Please edit it with your configuration."
+  exit 0
+fi
+
+# 处理其他选项
 CONFIG_PATH=""
 if [[ $# -gt 0 ]]; then
   i=1
@@ -190,7 +217,8 @@ GITHUB_TOKEN="${TOKEN_CLI:-${GITHUB_TOKEN:-}}"
 APP_NAME="${APP_NAME_CLI:-${APP_NAME:-}}"
 ASSET_NAME="${ASSET_NAME_CLI:-${ASSET_NAME:-${APP_NAME:-}}}"
 SYSTEMD_UNIT="${UNIT_NAME_CLI:-${SYSTEMD_UNIT:-}}"
-VERSION="${VERSION_CLI:-}"
+# 优先级：CLI > 配置文件 > 环境变量 (由 .env source 引入)
+VERSION="${VERSION_CLI:-${VERSION:-}}"
 
 if [[ -n "${DEPLOY_ROOT_CLI:-}" ]]; then
   DEPLOY_ROOT="$DEPLOY_ROOT_CLI"
@@ -232,7 +260,8 @@ if [[ -z "$SYSTEMD_UNIT" ]]; then
 fi
 
 if [[ -z "$VERSION" ]]; then
-  echo "[ERROR] VERSION is not specified. Provide it as positional arg."
+  echo "[ERROR] VERSION is not set. Provide it as a positional argument"
+  echo "        or define VERSION in the config file."
   echo "Example: godeploy v1.0.0"
   exit 1
 fi
