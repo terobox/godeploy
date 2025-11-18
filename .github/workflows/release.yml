@@ -1,0 +1,49 @@
+name: Create Release and Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release and Upload Asset
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 第一步：检出代码
+      # 使用官方的 actions/checkout@v4 action 来获取你的代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 第二步：设置版本和文件名的环境变量
+      # 这样后续步骤可以复用这些值，使脚本更清晰
+      - name: Set Release Variables
+        id: vars
+        run: |
+          # 从 Git ref (例如 refs/tags/v1.0.0) 中提取版本号 (v1.0.0)
+          VERSION=${GITHUB_REF#refs/tags/}
+          
+          # 设置输出参数，供后续步骤使用
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          echo "archive_name=godeploy-$VERSION.tar.gz" >> $GITHUB_OUTPUT
+          echo "archive_prefix=godeploy-$VERSION/" >> $GITHUB_OUTPUT
+      
+      # 第三步：打包项目文件
+      # 使用我们之前讨论过的 git archive 命令，引用上一步设置的变量
+      - name: Create release archive
+        run: |
+          git archive --format=tar.gz --prefix=${{ steps.vars.outputs.archive_prefix }} -o ${{ steps.vars.outputs.archive_name }} ${{ steps.vars.outputs.tag }}
+
+      # 第四步：创建 GitHub Release 并上传打包好的文件
+      # 使用官方的 softprops/action-gh-release@v2 action，它极大地简化了 Release 创建过程
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Release ${{ steps.vars.outputs.tag }}
+          
+          # Release 的描述内容。
+          generate_release_notes: true
+          
+          files: ${{ steps.vars.outputs.archive_name }}

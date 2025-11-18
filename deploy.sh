@@ -10,7 +10,7 @@
 #   - GODEPLOY_VERSION 由 Git 仓库 + Tag 管理
 #   - 可通过 `godeploy --version` 查看
 #
-# 作者：你自己（terobox）
+# 作者：terobox
 # 平台：Ubuntu (systemd)
 #
 set -euo pipefail
