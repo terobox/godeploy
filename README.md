@@ -71,3 +71,6 @@ godeploy v1.0.0   # 回滚，只要 Release 里还保留这个版本
 
 ## 安装命令
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash
+```
