@@ -87,18 +87,30 @@ if [[ "${1:-}" == "init" ]]; then
     exit 1
   fi
   cat <<'EOF' > ./godeploy.env
-# GitHub 仓库 & Token
+# === GitHub 配置 ===
+# GitHub 仓库路径 (例如: "owner/repo")
 REPO="owner/repo"
+
+# 用于访问 GitHub API 的 Personal Access Token
 GITHUB_TOKEN="ghp_xxx_your_token_here"
-# 应用名称（二进制名、默认资产名）
+
+# === 应用核心配置 ===
+# 应用名称, 将作为二进制文件名和 systemd 服务名 (默认)
 APP_NAME="my-app"
-# 要部署的版本 tag (如 v1.0.0)，godeploy 会优先使用命令行传入的版本号
+
+# 要部署的版本 tag (例如: "v1.0.0")
+# 如果留空, 脚本会尝试获取最新的 Release
+# 注意: 命令行传入的版本号优先级最高
 # VERSION=""
-# 可选：如果 Release 资产名和 APP_NAME 不一样，可以单独指定
+
+# === 高级/覆盖配置 (可选) ===
+# 如果 Release 中的资产 (asset) 名称与 APP_NAME 不同, 在此指定
 # ASSET_NAME="my-app-linux-amd64"
-# 可选：如果 systemd unit 名字不等于 APP_NAME.service，可以单独指定
+
+# 如果 systemd 服务单元 (unit) 名称不是 "APP_NAME.service", 在此指定
 # SYSTEMD_UNIT="my-app.service"
-# 可选：部署根目录，默认为执行 godeploy 时的当前目录
+
+# 应用部署的根目录, 默认为执行脚本的当前目录
 # DEPLOY_ROOT="/srv/app/my-app"
 EOF
   echo "[SUCCESS] Created ./godeploy.env. Please edit it with your configuration."

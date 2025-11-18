@@ -76,6 +76,6 @@ godeploy v1.0.0   # 回滚，只要 Release 里还保留这个版本
 curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash
 # 安装特定版本 (用于回滚或测试)
 # 安装 v0.0.0.3 版本
-curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash -s v0.0.0.3
+curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash -s v0.0.0.4
 
 ```
