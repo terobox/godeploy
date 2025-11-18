@@ -397,6 +397,10 @@ systemctl daemon-reload
 LOAD_STATE=$(systemctl show -p LoadState --value "${SYSTEMD_UNIT}" 2>/dev/null || echo "not-found")
 
 if [[ "$LOAD_STATE" == "loaded" ]]; then
+  # --- 新增行在这里 ---
+  echo "[INFO] Ensuring unit '${SYSTEMD_UNIT}' is enabled for boot..."
+  systemctl enable "$SYSTEMD_UNIT"
+  # --- 新增结束 ---
   if systemctl is-active --quiet "$SYSTEMD_UNIT"; then
     echo "[INFO] Unit '${SYSTEMD_UNIT}' is active. Restarting..."
     systemctl restart "$SYSTEMD_UNIT"
