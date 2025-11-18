@@ -1,0 +1,18 @@
+# /etc/systemd/system/my-app.service
+[Unit]
+Description=My App Service
+After=network.target
+# (可选) 如果你的服务依赖数据库，可以加上
+# After=network.target mysql.service postgresql.service
+
+[Service]
+User=youruser
+Group=youruser
+WorkingDirectory=/srv/app/my-app/current
+ExecStart=/srv/app/my-app/current/my-app
+EnvironmentFile=/srv/app/my-app/.env
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

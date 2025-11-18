@@ -415,3 +415,27 @@ fi
 
 echo "[SUCCESS] Deployed ${APP_NAME} version ${VERSION} to ${DEPLOY_ROOT}"
 echo "===== godeploy finished ====="
+
+########################################
+# Step 5: Post-deployment Information
+########################################
+echo
+echo "===== Service Management Commands ====="
+echo "You can now manage your service using:"
+echo
+echo "# View service status and recent logs:"
+echo "sudo systemctl status ${SYSTEMD_UNIT}"
+echo
+echo "# Follow logs in real-time:"
+echo "sudo journalctl -u ${SYSTEMD_UNIT} -f"
+echo
+echo "# Stop the service:"
+echo "sudo systemctl stop ${SYSTEMD_UNIT}"
+echo
+echo "# Start the service:"
+echo "sudo systemctl start ${SYSTEMD_UNIT}"
+echo
+echo "# Enable the service to start on boot:"
+echo "sudo systemctl enable ${SYSTEMD_UNIT}"
+echo
+echo "======================================="
