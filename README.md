@@ -1,6 +1,6 @@
 # godeploy
 
-GitHub Release 部署工具
+GitHub Release 部署工具，支持 Golang + Nodejs 的 CI/CD
 
 ## 使用方法
 
