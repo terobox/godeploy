@@ -328,21 +328,33 @@ echo "===== Step 4: Restarting systemd unit ====="
 
 systemctl daemon-reload
 
-if systemctl list-unit-files | grep -q "^${SYSTEMD_UNIT}"; then
+# 用 LoadState 判断 unit 是否存在
+LOAD_STATE=$(systemctl show -p LoadState --value "${SYSTEMD_UNIT}" 2>/dev/null || echo "not-found")
+
+if [[ "$LOAD_STATE" == "loaded" ]]; then
   if systemctl is-active --quiet "$SYSTEMD_UNIT"; then
     echo "[INFO] Unit '${SYSTEMD_UNIT}' is active. Restarting..."
-    systemctl restart "$SYSTEMD_UNIT"
+    if ! systemctl restart "$SYSTEMD_UNIT"; then
+      echo "[ERROR] Failed to restart '${SYSTEMD_UNIT}'."
+      echo "        Please check logs: journalctl -u ${SYSTEMD_UNIT} -n 50"
+      exit 1
+    fi
   else
     echo "[INFO] Unit '${SYSTEMD_UNIT}' is not active. Starting..."
-    systemctl start "$SYSTEMD_UNIT"
+    if ! systemctl start "$SYSTEMD_UNIT"; then
+      echo "[ERROR] Failed to start '${SYSTEMD_UNIT}'."
+      echo "        Please check logs: journalctl -u ${SYSTEMD_UNIT} -n 50"
+      exit 1
+    fi
   fi
 
   echo "[INFO] Current status of ${SYSTEMD_UNIT}:"
   systemctl status "$SYSTEMD_UNIT" --no-pager -l | head -n 20 || true
 else
-  echo "[ERROR] systemd unit '${SYSTEMD_UNIT}' not found."
-  echo "        Please create it under /etc/systemd/system/ first."
-  exit 1
+  echo "[WARN] systemd unit '${SYSTEMD_UNIT}' not loaded (LoadState=${LOAD_STATE})."
+  echo "       Skipping restart. Make sure /etc/systemd/system/${SYSTEMD_UNIT} 存在并已 daemon-reload。"
+  # 如果你希望这种情况直接失败，也可以改成：
+  # exit 1
 fi
 
 echo "[SUCCESS] Deployed ${APP_NAME} version ${VERSION} to ${DEPLOY_ROOT}"
