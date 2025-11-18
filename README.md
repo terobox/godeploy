@@ -68,3 +68,6 @@ cd /srv/app/ha
 godeploy v1.0.1   # 升级
 godeploy v1.0.0   # 回滚，只要 Release 里还保留这个版本
 ```
+
+## 安装命令
+
