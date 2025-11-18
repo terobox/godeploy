@@ -1,0 +1,18 @@
+# /etc/systemd/system/wf-backend.service
+[Unit]
+Description=Workflow Backend Service
+After=network.target
+# (可选) 如果你的服务依赖数据库，可以加上
+# After=network.target mysql.service postgresql.service
+
+[Service]
+User=leon
+Group=leon
+WorkingDirectory=/srv/app/workflow/backend/current
+ExecStart=/srv/app/workflow/backend/current/wf-backend
+EnvironmentFile=/srv/app/workflow/backend/.env
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
