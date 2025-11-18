@@ -17,7 +17,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # 当前版本（大版本更新，请同步修改此处）
-GODEPLOY_VERSION="0.1.0"
+GODEPLOY_VERSION="0.0.1"
 
 print_help() {
   cat <<EOF

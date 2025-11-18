@@ -4,7 +4,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# ===== 基本配置（如无特殊需求可不动） =====
+# ===== 基本配置 =====
 GODEPLOY_REPO="${GODEPLOY_REPO:-terobox/godeploy}"   # GitHub 仓库
 GODEPLOY_REF="${GODEPLOY_REF:-main}"                 # 分支或 tag
 GODEPLOY_NAME="${GODEPLOY_NAME:-godeploy}"           # 安装后的命令名
@@ -31,15 +31,18 @@ log "开始安装 ${GODEPLOY_NAME}（来自 ${GODEPLOY_REPO}@${GODEPLOY_REF}）"
 # ===== 下载 deploy.sh 并安装为全局命令 =====
 mkdir -p "${INSTALL_BIN_DIR}"
 TARGET_BIN="${INSTALL_BIN_DIR}/${GODEPLOY_NAME}"
-
 TMP_BIN="${TARGET_BIN}.tmp"
 URL="${RAW_BASE}/deploy.sh"
+
+if [[ -f "${TARGET_BIN}" ]]; then
+  log "检测到已存在的 ${TARGET_BIN}，将进行覆盖安装。"
+fi
 
 log "从 ${URL} 下载 deploy.sh -> ${TMP_BIN}"
 curl -fsSL "${URL}" -o "${TMP_BIN}" || die "下载 deploy.sh 失败，请检查仓库/分支是否正确。"
 
 chmod +x "${TMP_BIN}"
-mv "${TMP_BIN}" "${TARGET_BIN}"
+mv -f "${TMP_BIN}" "${TARGET_BIN}"
 
 log "已安装命令: ${TARGET_BIN}"
 
@@ -58,8 +61,7 @@ cat <<EOF
 
 常用用法示例（在你的应用部署目录中）：
 
-  # 1. 准备本地配置文件（示例）
-  #    在你的项目目录新建 ./godeploy.env，内容类似：
+  # 1. 在当前目录准备本地配置文件 ./godeploy.env，示例内容：
   #      REPO="terobox/workflow"
   #      GITHUB_TOKEN="ghp_xxx..."
   #      APP_NAME="wf-backend"
