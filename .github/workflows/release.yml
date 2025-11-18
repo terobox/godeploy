@@ -10,6 +10,9 @@ jobs:
     name: Create Release and Upload Asset
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: write
+      
     steps:
       # 第一步：检出代码
       # 使用官方的 actions/checkout@v4 action 来获取你的代码
@@ -45,5 +48,5 @@ jobs:
           
           # Release 的描述内容。
           generate_release_notes: true
-          
+
           files: ${{ steps.vars.outputs.archive_name }}
