@@ -2,7 +2,23 @@
 
 GitHub Release 部署工具
 
-## 使用方法汇总
+## 使用方法
+
+```bash
+# ==== 安装 godeploy 命令 ====
+# 安装最新稳定版 (最常用)
+curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash
+# 安装特定版本 (用于回滚或测试)
+# 安装 v0.0.0.3 版本
+curl -fsSL https://raw.githubusercontent.com/terobox/godeploy/main/install.sh | sudo bash -s v0.0.0.4
+
+# 
+
+# ==== 创建 godeploy 配置文件 ====
+
+```
+
+## AI 汇总
 
 ### 1）安装命令
 

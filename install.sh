@@ -70,10 +70,11 @@ if ! curl -fsSL "${URL}" -o "${TMP_BIN}"; then
   err "请检查：1. 版本号 '${TARGET_VERSION}' 是否存在。 2. 网络是否正常。"
   exit 1
 fi
-
+# --- 新增：注入版本号 ---
+log "Injecting version '${TARGET_VERSION}' into the script..."
+sed -i "s/%%GODEPLOY_VERSION%%/${TARGET_VERSION}/g" "${TMP_BIN}"
 chmod +x "${TMP_BIN}"
 mv -f "${TMP_BIN}" "${TARGET_BIN}"
-
 log "已成功安装 ${GODEPLOY_NAME} 到: ${TARGET_BIN}"
 
 # ===== 使用说明 =====

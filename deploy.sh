@@ -17,7 +17,10 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # 当前版本（大版本更新，请同步修改此处）
-GODEPLOY_VERSION="0.0.1"
+# GODEPLOY_VERSION="0.0.1"
+
+# 版本号 (由 install.sh 在安装时自动注入)
+GODEPLOY_VERSION="%%GODEPLOY_VERSION%%"
 
 print_help() {
   cat <<EOF
