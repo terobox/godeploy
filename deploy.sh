@@ -28,7 +28,7 @@ godeploy ${GODEPLOY_VERSION} - GitHub Release 部署工具
 
 Usage:
   godeploy [options] [<version>]
-  godeploy init
+  godeploy init [env|service]
 
 Options:
   -c, --config FILE       指定部署配置文件（默认为 ./godeploy.env，
@@ -60,6 +60,15 @@ Positional arguments:
   # DEPLOY_ROOT="/srv/app/ha"
 
 典型用法：
+  # 0. 在当前目录初始化默认模板（同时生成 godeploy.env 和 godeploy.service）
+  godeploy init
+
+  # 0.1 只生成 env 模板
+  godeploy init env
+
+  # 0.2 只生成 service 模板
+  godeploy init service
+
   # 1. 项目目录中有 godeploy.env
   godeploy v1.0.0
 
@@ -83,13 +92,40 @@ print_version() {
 # Step 0: 预解析特殊命令 (init) 和早期选项 (--config / --help / --version)
 ########################################
 
-# 新增：处理 init 命令
+# 新增：处理 init 命令（支持：init / init env / init service）
 if [[ "${1:-}" == "init" ]]; then
-  if [[ -f "./godeploy.env" ]]; then
-    echo "[ERROR] godeploy.env already exists in the current directory. Aborting."
-    exit 1
+  INIT_TARGET="${2:-all}"   # env | service | all(默认)
+
+  case "$INIT_TARGET" in
+    env|service|all)
+      ;;
+    *)
+      echo "[ERROR] Unknown init target: '$INIT_TARGET'"
+      echo "Usage: godeploy init [env|service]"
+      exit 1
+      ;;
+  esac
+
+  # 如果是默认 all，需要保证没有“脏文件”（两个都不能存在）
+  if [[ "$INIT_TARGET" == "all" ]]; then
+    if [[ -f "./godeploy.env" || -f "./godeploy.service" ]]; then
+      echo "[ERROR] Detected existing files in current directory:"
+      [[ -f "./godeploy.env" ]] && echo "  - ./godeploy.env"
+      [[ -f "./godeploy.service" ]] && echo "  - ./godeploy.service"
+      echo "[HINT] 请先移动/删除它们，或使用："
+      echo "       godeploy init env"
+      echo "       godeploy init service"
+      exit 1
+    fi
   fi
-  cat <<'EOF' > ./godeploy.env
+
+  # 生成 godeploy.env
+  if [[ "$INIT_TARGET" == "env" || "$INIT_TARGET" == "all" ]]; then
+    if [[ -f "./godeploy.env" ]]; then
+      echo "[ERROR] ./godeploy.env already exists in the current directory. Aborting."
+      exit 1
+    fi
+    cat <<'EOF' > ./godeploy.env
 # === GitHub 配置 ===
 # GitHub 仓库路径 (例如: "owner/repo")
 REPO="owner/repo"
@@ -121,7 +157,40 @@ APP_NAME="my-app"
 # 应用部署的根目录, 默认为执行脚本的当前目录
 # DEPLOY_ROOT="/srv/app/my-app"
 EOF
-  echo "[SUCCESS] Created ./godeploy.env. Please edit it with your configuration."
+    echo "[SUCCESS] Created ./godeploy.env. Please edit it with your configuration."
+  fi
+
+  # 生成 godeploy.service
+  if [[ "$INIT_TARGET" == "service" || "$INIT_TARGET" == "all" ]]; then
+    if [[ -f "./godeploy.service" ]]; then
+      echo "[ERROR] ./godeploy.service already exists in the current directory. Aborting."
+      exit 1
+    fi
+    cat <<'EOF' > ./godeploy.service
+# godeploy systemd unit template
+# 建议修改内容后拷贝到 /etc/systemd/system/my-app.service
+
+[Unit]
+Description=My App Service
+After=network.target
+# (可选) 如果你的服务依赖数据库，可以加上
+# After=network.target mysql.service postgresql.service
+
+[Service]
+User=youruser
+Group=youruser
+WorkingDirectory=/srv/app/my-app/current
+ExecStart=/srv/app/my-app/current/my-app
+EnvironmentFile=/srv/app/my-app/.env
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    echo "[SUCCESS] Created ./godeploy.service. 请按需修改后复制到 /etc/systemd/system/。"
+  fi
+
   exit 0
 fi
 
