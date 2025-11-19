@@ -543,26 +543,25 @@ fi
 
 echo "===== Step 4: Restarting systemd unit ====="
 
-systemctl daemon-reload
+sudo systemctl daemon-reload
 
 # 使用 LoadState 判断 unit 是否存在/已加载，避免 list-unit-files 误判
-LOAD_STATE=$(systemctl show -p LoadState --value "${SYSTEMD_UNIT}" 2>/dev/null || echo "not-found")
+LOAD_STATE=$(sudo systemctl show -p LoadState --value "${SYSTEMD_UNIT}" 2>/dev/null || echo "not-found")
 
 if [[ "$LOAD_STATE" == "loaded" ]]; then
-  # --- 新增行在这里 ---
   echo "[INFO] Ensuring unit '${SYSTEMD_UNIT}' is enabled for boot..."
-  systemctl enable "$SYSTEMD_UNIT"
-  # --- 新增结束 ---
-  if systemctl is-active --quiet "$SYSTEMD_UNIT"; then
+  sudo systemctl enable "$SYSTEMD_UNIT"
+
+  if sudo systemctl is-active --quiet "$SYSTEMD_UNIT"; then
     echo "[INFO] Unit '${SYSTEMD_UNIT}' is active. Restarting..."
-    systemctl restart "$SYSTEMD_UNIT"
+    sudo systemctl restart "$SYSTEMD_UNIT"
   else
     echo "[INFO] Unit '${SYSTEMD_UNIT}' is not active. Starting..."
-    systemctl start "$SYSTEMD_UNIT"
+    sudo systemctl start "$SYSTEMD_UNIT"
   fi
 
   echo "[INFO] Current status of ${SYSTEMD_UNIT}:"
-  systemctl status "$SYSTEMD_UNIT" --no-pager -l | head -n 20 || true
+  sudo systemctl status "$SYSTEMD_UNIT" --no-pager -l | head -n 20 || true
 else
   echo "[ERROR] systemd unit '${SYSTEMD_UNIT}' not loaded (LoadState=${LOAD_STATE})."
   echo "        Please create it under /etc/systemd/system/ 并执行 systemctl daemon-reload。"
