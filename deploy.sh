@@ -169,6 +169,7 @@ EOF
     cat <<'EOF' > ./godeploy.service
 # godeploy systemd unit template
 # 建议修改内容后拷贝到 /etc/systemd/system/my-app.service
+# 然后加载一遍配置 sudo systemctl daemon-reload
 
 [Unit]
 Description=My App Service
@@ -188,7 +189,7 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target
 EOF
-    echo "[SUCCESS] Created ./godeploy.service. 请按需修改后复制到 /etc/systemd/system/。"
+    echo "[SUCCESS] Created ./godeploy.service. Please modify as needed and copy to /etc/systemd/system/."
   fi
 
   exit 0
