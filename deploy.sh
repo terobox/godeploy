@@ -255,7 +255,8 @@ else
   DEPLOY_ROOT="${DEPLOY_ROOT:-$(pwd)}"
 fi
 
-if [[ -z "$SYSTEMD_UNIT" && -n "$APP_NAME" ]]; then
+# 只有非 static 模式才自动填充 systemd unit
+if [[ "$DEPLOY_MODE" != "static" && -z "$SYSTEMD_UNIT" && -n "$APP_NAME" ]]; then
   SYSTEMD_UNIT="${APP_NAME}.service"
 fi
 
@@ -283,7 +284,8 @@ if [[ -z "$ASSET_NAME" ]]; then
   exit 1
 fi
 
-if [[ -z "$SYSTEMD_UNIT" ]]; then
+# 只有非 static 模式才要求必须有 systemd unit
+if [[ "$DEPLOY_MODE" != "static" && -z "$SYSTEMD_UNIT" ]]; then
   echo "[ERROR] SYSTEMD_UNIT resolved empty."
   exit 1
 fi
@@ -458,6 +460,16 @@ echo "[INFO] Symlink updated: ${CURRENT_DIR}/${APP_NAME} -> ${TARGET_PATH}"
 ########################################
 # Step 10: 重启 systemd 服务
 ########################################
+
+# static 模式下，不做任何 systemd 操作，直接结束
+if [[ "$DEPLOY_MODE" == "static" ]]; then
+  echo "===== Step 4: Static mode detected, skipping systemd operations ====="
+  echo "[INFO] Static files deployed to ${CURRENT_DIR}/${APP_NAME}"
+  echo "[INFO] Please reload/restart Nginx or your web server manually if needed."
+  echo "[SUCCESS] Deployed ${APP_NAME} version ${VERSION} to ${DEPLOY_ROOT}"
+  echo "===== godeploy finished (static mode) ====="
+  exit 0
+fi
 
 echo "===== Step 4: Restarting systemd unit ====="
 
