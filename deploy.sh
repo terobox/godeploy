@@ -107,6 +107,11 @@ APP_NAME="my-app"
 # VERSION=""
 
 # === 高级/覆盖配置 (可选) ===
+# 部署模式:
+#   - "binary" (默认): Go 等后端二进制
+#   - "static": Node.js / React 构建好的静态前端 (tar.gz)
+# DEPLOY_MODE="static"
+
 # 如果 Release 中的资产 (asset) 名称与 APP_NAME 不同, 在此指定
 # ASSET_NAME="my-app-linux-amd64"
 
@@ -235,6 +240,15 @@ SYSTEMD_UNIT="${UNIT_NAME_CLI:-${SYSTEMD_UNIT:-}}"
 # 优先级：CLI > 配置文件 > 环境变量 (由 .env source 引入)
 VERSION="${VERSION_CLI:-${VERSION:-}}"
 
+# 新增：部署模式（默认 binary，前端静态资源用 static）
+DEPLOY_MODE="${DEPLOY_MODE:-binary}"
+
+# 如果是静态前端模式，且没有显式指定 ASSET_NAME，
+# 默认使用 "<APP_NAME>-<VERSION>.tar.gz" 作为 Release 资产名称
+if [[ "$DEPLOY_MODE" == "static" && -z "$ASSET_NAME_CLI" && "$ASSET_NAME" == "$APP_NAME" ]]; then
+  ASSET_NAME="${APP_NAME}-${VERSION}.tar.gz"
+fi
+
 if [[ -n "${DEPLOY_ROOT_CLI:-}" ]]; then
   DEPLOY_ROOT="$DEPLOY_ROOT_CLI"
 else
@@ -291,6 +305,7 @@ echo "[INFO] APP_NAME     : $APP_NAME"
 echo "[INFO] ASSET_NAME   : $ASSET_NAME"
 echo "[INFO] SYSTEMD_UNIT : $SYSTEMD_UNIT"
 echo "[INFO] VERSION      : $VERSION"
+echo "[INFO] DEPLOY_MODE  : $DEPLOY_MODE"   # 新增
 echo "[INFO] DEPLOY_ROOT  : $DEPLOY_ROOT"
 echo "======================================================"
 
@@ -328,51 +343,106 @@ fi
 # Step 8: 下载或复用 Release 资产
 ########################################
 
-echo "===== Step 2: Download and verify binary ====="
+echo "===== Step 2: Download and verify binary/static asset ====="
 
-TARGET_FILE="${RELEASES_DIR}/${APP_NAME}-${VERSION}"
+# 通用基底路径（对 binary 是文件名，对 static 是目录名）
+TARGET_BASE="${RELEASES_DIR}/${APP_NAME}-${VERSION}"
+TARGET_PATH=""
 
-if [[ -f "$TARGET_FILE" ]]; then
-  echo "[INFO] Binary already exists locally: $TARGET_FILE"
+if [[ "$DEPLOY_MODE" == "static" ]]; then
+  # Node.js / React 静态前端: tar.gz 解压到目录
+  TARGET_PATH="$TARGET_BASE"          # 解压后的目录
+  TARGET_TAR="${TARGET_BASE}.tar.gz"  # 本地缓存的 tar 包
+
+  if [[ -d "$TARGET_PATH" ]]; then
+    echo "[INFO] Static release directory already exists: $TARGET_PATH"
+  else
+    echo "[INFO] Static release directory does not exist. Preparing to download & extract..."
+
+    # 若本地没有 tar.gz，先从 GitHub 下载
+    if [[ ! -f "$TARGET_TAR" ]]; then
+      echo "[INFO] Querying GitHub API for release asset (static)..."
+
+      RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
+      RELEASE_JSON=$(curl -sSL -H "Authorization: token ${GITHUB_TOKEN}" "$RELEASE_API_URL")
+
+      if [[ -z "$RELEASE_JSON" ]] || [[ "$(echo "$RELEASE_JSON" | jq -r '.message // empty')" == "Not Found" ]]; then
+        echo "[ERROR] Could not find release tag '${VERSION}' in repo '${REPO}'"
+        exit 1
+      fi
+
+      ASSET_ID=$(echo "$RELEASE_JSON" | jq ".assets[] | select(.name==\"${ASSET_NAME}\") | .id" 2>/dev/null || true)
+
+      if [[ -z "$ASSET_ID" || "$ASSET_ID" == "null" ]]; then
+        echo "[ERROR] Could not find asset named '${ASSET_NAME}' in release '${VERSION}'"
+        exit 1
+      fi
+
+      echo "[INFO] Found asset ID: $ASSET_ID"
+      echo "[INFO] Downloading static asset to: $TARGET_TAR"
+
+      DOWNLOAD_URL="https://api.github.com/repos/${REPO}/releases/assets/${ASSET_ID}"
+
+      curl -sSL \
+        -H "Authorization: token ${GITHUB_TOKEN}" \
+        -H "Accept: application/octet-stream" \
+        -o "$TARGET_TAR" \
+        "$DOWNLOAD_URL"
+    else
+      echo "[INFO] Reusing cached tarball: $TARGET_TAR"
+    fi
+
+    echo "[INFO] Extracting tarball to: $TARGET_PATH"
+    mkdir -p "$TARGET_PATH"
+    # 你的构建是 "tar -zcvf xxx.tar.gz dist"，这里 strip 掉外层 dist 目录
+    tar -xzf "$TARGET_TAR" -C "$TARGET_PATH" --strip-components=1
+  fi
 else
-  echo "[INFO] Querying GitHub API for release asset..."
+  # 原有 Go 二进制逻辑：保持不变
+  TARGET_PATH="$TARGET_BASE"
 
-  RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
-  RELEASE_JSON=$(curl -sSL -H "Authorization: token ${GITHUB_TOKEN}" "$RELEASE_API_URL")
+  if [[ -f "$TARGET_PATH" ]]; then
+    echo "[INFO] Binary already exists locally: $TARGET_PATH"
+  else
+    echo "[INFO] Querying GitHub API for release asset..."
 
-  if [[ -z "$RELEASE_JSON" ]] || [[ "$(echo "$RELEASE_JSON" | jq -r '.message // empty')" == "Not Found" ]]; then
-    echo "[ERROR] Could not find release tag '${VERSION}' in repo '${REPO}'"
-    exit 1
-  fi
+    RELEASE_API_URL="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
+    RELEASE_JSON=$(curl -sSL -H "Authorization: token ${GITHUB_TOKEN}" "$RELEASE_API_URL")
 
-  ASSET_ID=$(echo "$RELEASE_JSON" | jq ".assets[] | select(.name==\"${ASSET_NAME}\") | .id" 2>/dev/null || true)
+    if [[ -z "$RELEASE_JSON" ]] || [[ "$(echo "$RELEASE_JSON" | jq -r '.message // empty')" == "Not Found" ]]; then
+      echo "[ERROR] Could not find release tag '${VERSION}' in repo '${REPO}'"
+      exit 1
+    fi
 
-  if [[ -z "$ASSET_ID" || "$ASSET_ID" == "null" ]]; then
-    echo "[ERROR] Could not find asset named '${ASSET_NAME}' in release '${VERSION}'"
-    exit 1
-  fi
+    ASSET_ID=$(echo "$RELEASE_JSON" | jq ".assets[] | select(.name==\"${ASSET_NAME}\") | .id" 2>/dev/null || true)
 
-  echo "[INFO] Found asset ID: $ASSET_ID"
-  echo "[INFO] Downloading asset to: $TARGET_FILE"
+    if [[ -z "$ASSET_ID" || "$ASSET_ID" == "null" ]]; then
+      echo "[ERROR] Could not find asset named '${ASSET_NAME}' in release '${VERSION}'"
+      exit 1
+    fi
 
-  DOWNLOAD_URL="https://api.github.com/repos/${REPO}/releases/assets/${ASSET_ID}"
+    echo "[INFO] Found asset ID: $ASSET_ID"
+    echo "[INFO] Downloading asset to: $TARGET_PATH"
 
-  curl -sSL \
-    -H "Authorization: token ${GITHUB_TOKEN}" \
-    -H "Accept: application/octet-stream" \
-    -o "$TARGET_FILE" \
-    "$DOWNLOAD_URL"
+    DOWNLOAD_URL="https://api.github.com/repos/${REPO}/releases/assets/${ASSET_ID}"
 
-  chmod +x "$TARGET_FILE"
+    curl -sSL \
+      -H "Authorization: token ${GITHUB_TOKEN}" \
+      -H "Accept: application/octet-stream" \
+      -o "$TARGET_PATH" \
+      "$DOWNLOAD_URL"
 
-  FILE_TYPE=$(file "$TARGET_FILE")
-  echo "[INFO] Downloaded file type: $FILE_TYPE"
+    chmod +x "$TARGET_PATH"
 
-  if [[ "$FILE_TYPE" != *"executable"* ]]; then
-    echo "[ERROR] Downloaded file does not look like an executable!"
-    head "$TARGET_FILE" || true
-    rm -f "$TARGET_FILE"
-    exit 1
+    FILE_TYPE=$(file "$TARGET_PATH")
+    echo "[INFO] Downloaded file type: $FILE_TYPE"
+
+    if [[ "$FILE_TYPE" != *"executable"* ]]; then
+      echo "[ERROR] Downloaded file does not look like an executable!"
+      head "$TARGET_PATH" || true
+      rm -f "$TARGET_PATH"
+      exit 1
+    fi
   fi
 fi
 
@@ -382,8 +452,8 @@ fi
 
 echo "===== Step 3: Updating symlink ====="
 
-ln -sfn "$TARGET_FILE" "${CURRENT_DIR}/${APP_NAME}"
-echo "[INFO] Symlink updated: ${CURRENT_DIR}/${APP_NAME} -> ${TARGET_FILE}"
+ln -sfn "$TARGET_PATH" "${CURRENT_DIR}/${APP_NAME}"
+echo "[INFO] Symlink updated: ${CURRENT_DIR}/${APP_NAME} -> ${TARGET_PATH}"
 
 ########################################
 # Step 10: 重启 systemd 服务
